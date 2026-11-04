@@ -1,0 +1,51 @@
+{
+  "status": "completed",
+  "total_papers": 5,
+  "successful": 2,
+  "failed": 3,
+  "total_chunks": 251,
+  "papers": [
+    {
+      "paper_id": "attention_is_all_you_need",
+      "filename": "attention_is_all_you_need.pdf",
+      "chunks_created": 58,
+      "total_pages": 15,
+      "status": "success",
+      "error": null
+    },
+    {
+      "paper_id": "bert_pre_training",
+      "filename": "bert_pre_training.pdf",
+      "chunks_created": 0,
+      "total_pages": 0,
+      "status": "error",
+      "error": null
+    },
+    {
+      "paper_id": "chain_of_thought_wei2022",
+      "filename": "chain_of_thought_wei2022.pdf",
+      "chunks_created": 193,
+      "total_pages": 43,
+      "status": "success",
+      "error": null
+    },
+    {
+      "paper_id": "llm_survey_2023",
+      "filename": "llm_survey_2023.pdf",
+      "chunks_created": 0,
+      "total_pages": 144,
+      "status": "error",
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/embed_content_free_tier_requests, limit: 1000, model: gemini-embedding-1.0\\nPlease retry in 20.571777912s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/embed_content_free_tier_requests', 'quotaId': 'EmbedContentRequestsPerDayPerUserPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-embedding-1.0'}, 'quotaValue': '1000'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '20s'}]}} in upsert."
+    },
+    {
+      "paper_id": "rag_paper_lewis2020",
+      "filename": "rag_paper_lewis2020.pdf",
+      "chunks_created": 0,
+      "total_pages": 19,
+      "status": "error",
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/embed_content_free_tier_requests, limit: 1000, model: gemini-embedding-1.0\\nPlease retry in 40.390817347s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/embed_content_free_tier_requests', 'quotaId': 'EmbedContentRequestsPerDayPerUserPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-embedding-1.0'}, 'quotaValue': '1000'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '40s'}]}} in upsert."
+    }
+  ],
+  "duration_seconds": 678.62,
+  "completed_at": "2026-05-15T12:28:18.839037"
+}

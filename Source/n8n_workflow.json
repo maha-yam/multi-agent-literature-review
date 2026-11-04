@@ -1,0 +1,304 @@
+{
+  "name": "SMA – Revue de Littérature & Research Gaps",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 9 * * 1" }]
+        }
+      },
+      "id": "trigger-001",
+      "name": "Trigger Hebdomadaire (Lundi 9h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8888/api/kernels",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "name", "value": "python3" }]
+        }
+      },
+      "id": "jupyter-001",
+      "name": "Lancer Agent 1 – Ingestion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [400, 300],
+      "notes": "Déclenche le notebook 01_agent_ingestion.ipynb via l'API JupyterLab. Indexe les PDFs dans ChromaDB."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "condition-ingest-ok",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-ingestion",
+      "name": "Ingestion Réussie ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fallback – Ingestion partielle\nconst items = $input.all();\nconst result = {\n  status: 'partial',\n  message: 'Ingestion partielle – certains PDFs ont échoué',\n  failed_papers: items[0].json.failed || []\n};\nreturn [{ json: result }];"
+      },
+      "id": "fallback-ingestion",
+      "name": "Fallback – Log Erreur Ingestion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [620, 480],
+      "notes": "Si l'ingestion échoue complètement, log l'erreur et notifie par email."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8888/api/kernels",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "name", "value": "python3" }]
+        }
+      },
+      "id": "jupyter-002",
+      "name": "Lancer Agent 2 – Synthèse RAG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [840, 300],
+      "notes": "Déclenche le notebook 02_agent_synthese.ipynb. Requête ChromaDB + Claude Sonnet."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8888/api/kernels",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "name", "value": "python3" }]
+        }
+      },
+      "id": "jupyter-003",
+      "name": "Lancer Agent 3 – Détection Gaps",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1060, 300],
+      "notes": "Déclenche le notebook 03_agent_detection_gaps.ipynb. Claude Sonnet + CoT."
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "resource": "message",
+        "sendTo": "votre.email@example.com",
+        "subject": "=SMA Revue de Littérature – Validation requise | {{ $now.format('dd/MM/yyyy') }}",
+        "emailType": "html",
+        "message": "=<h2>Rapport de Research Gaps – Validation Humaine Requise</h2><p>L'agent SMA a terminé l'analyse du corpus scientifique.</p><p><strong>Résumé :</strong></p><ul><li>Papers analysés : {{ $json.papers_count }}</li><li>Gaps identifiés : {{ $json.gaps_count }}</li><li>Thèmes couverts : {{ $json.themes_count }}</li></ul><p>Consultez le rapport complet dans le dossier <code>logs/gap_report.md</code>.</p><p><strong>Action requise :</strong> Approuvez-vous ce rapport ?</p><a href='http://localhost:5678/webhook/approve-report?token={{ $json.validation_token }}&action=approve'>✅ Approuver</a> | <a href='http://localhost:5678/webhook/approve-report?token={{ $json.validation_token }}&action=reject'>❌ Rejeter</a>",
+        "options": {}
+      },
+      "id": "hitl-email",
+      "name": "HITL – Email Validation Humaine",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1280, 300],
+      "notes": "Human-in-the-Loop : envoie le rapport par email pour validation avant export final."
+    },
+    {
+      "parameters": {
+        "path": "approve-report",
+        "options": {}
+      },
+      "id": "webhook-hitl",
+      "name": "Webhook – Réponse Validation",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [1500, 300],
+      "webhookId": "approve-report-webhook",
+      "notes": "Reçoit la réponse de l'humain (approve/reject) et reprend le workflow."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "condition-approved",
+              "leftValue": "={{ $json.query.action }}",
+              "rightValue": "approve",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-approved",
+      "name": "Rapport Approuvé ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1720, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": { "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id" },
+        "sheetName": { "value": "Rapports", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $now.format('dd/MM/yyyy HH:mm') }}",
+            "Domaine": "={{ $node['Lancer Agent 2 – Synthèse RAG'].json.domain }}",
+            "Papers_Analysés": "={{ $node['Lancer Agent 1 – Ingestion'].json.papers_processed }}",
+            "Gaps_Détectés": "={{ $node['Lancer Agent 3 – Détection Gaps'].json.gaps_count }}",
+            "Statut": "Approuvé",
+            "Rapport_Path": "logs/gap_report.md"
+          }
+        }
+      },
+      "id": "google-sheets-export",
+      "name": "Export Google Sheets – Rapport Final",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [1940, 200],
+      "notes": "Couche 4 – Cloud Interfacing : enregistre le résumé dans Google Sheets pour suivi."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Re-run Agent 3 avec instructions améliorées\nconst rejectionReason = $json.query.reason || 'Non spécifié';\nreturn [{\n  json: {\n    action: 'rerun_gap_detection',\n    rejection_reason: rejectionReason,\n    retry_count: ($json.retry_count || 0) + 1,\n    additional_instruction: `L'humain a rejeté le précédent rapport pour: ${rejectionReason}. Sois plus spécifique.`\n  }\n}];"
+      },
+      "id": "handle-rejection",
+      "name": "Préparer Re-run Agent 3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1940, 400],
+      "notes": "Si l'humain rejette, prépare un re-run de l'Agent 3 avec le feedback (max 3 fois)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "condition-max-retry",
+              "leftValue": "={{ $json.retry_count }}",
+              "rightValue": 3,
+              "operator": { "type": "number", "operation": "lt" }
+            }
+          ]
+        }
+      },
+      "id": "check-retry-limit",
+      "name": "Retry < 3 ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2160, 400],
+      "notes": "Limite de 3 rejets maximum pour éviter la boucle infinie."
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "resource": "message",
+        "sendTo": "votre.email@example.com",
+        "subject": "SMA – Export forcé après 3 rejets",
+        "emailType": "text",
+        "message": "Le système a atteint la limite de 3 rejets. Le meilleur rapport disponible a été exporté automatiquement.",
+        "options": {}
+      },
+      "id": "force-export-email",
+      "name": "Email – Export Forcé (Limite Atteinte)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2380, 540],
+      "notes": "Notification d'export forcé après dépassement de la limite de retries."
+    },
+    {
+      "parameters": {
+        "content": "=## Workflow SMA – Revue de Littérature\n\nCe workflow n8n orchestre le Système Multi-Agents :\n\n**Flux principal :**\nTrigger → Agent Ingestion → Agent Synthèse → Agent Gap Detection → HITL Email → Webhook Validation → Export Google Sheets\n\n**Boucle de fallback :**\nSi rejeté par l'humain → Re-run Agent 3 (max 3 fois)\n\n**Couches implémentées :**\n- Couche 1 (Orchestration) : Ce workflow n8n\n- Couche 4 (Action) : Gmail (HITL) + Google Sheets (Export)",
+        "height": 200,
+        "width": 500
+      },
+      "id": "sticky-note-001",
+      "name": "Documentation Architecture",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, 600]
+    }
+  ],
+  "connections": {
+    "Trigger Hebdomadaire (Lundi 9h)": {
+      "main": [[{ "node": "Lancer Agent 1 – Ingestion", "type": "main", "index": 0 }]]
+    },
+    "Lancer Agent 1 – Ingestion": {
+      "main": [[{ "node": "Ingestion Réussie ?", "type": "main", "index": 0 }]]
+    },
+    "Ingestion Réussie ?": {
+      "main": [
+        [{ "node": "Lancer Agent 2 – Synthèse RAG", "type": "main", "index": 0 }],
+        [{ "node": "Fallback – Log Erreur Ingestion", "type": "main", "index": 0 }]
+      ]
+    },
+    "Lancer Agent 2 – Synthèse RAG": {
+      "main": [[{ "node": "Lancer Agent 3 – Détection Gaps", "type": "main", "index": 0 }]]
+    },
+    "Lancer Agent 3 – Détection Gaps": {
+      "main": [[{ "node": "HITL – Email Validation Humaine", "type": "main", "index": 0 }]]
+    },
+    "HITL – Email Validation Humaine": {
+      "main": [[{ "node": "Webhook – Réponse Validation", "type": "main", "index": 0 }]]
+    },
+    "Webhook – Réponse Validation": {
+      "main": [[{ "node": "Rapport Approuvé ?", "type": "main", "index": 0 }]]
+    },
+    "Rapport Approuvé ?": {
+      "main": [
+        [{ "node": "Export Google Sheets – Rapport Final", "type": "main", "index": 0 }],
+        [{ "node": "Préparer Re-run Agent 3", "type": "main", "index": 0 }]
+      ]
+    },
+    "Préparer Re-run Agent 3": {
+      "main": [[{ "node": "Retry < 3 ?", "type": "main", "index": 0 }]]
+    },
+    "Retry < 3 ?": {
+      "main": [
+        [{ "node": "Lancer Agent 3 – Détection Gaps", "type": "main", "index": 0 }],
+        [{ "node": "Email – Export Forcé (Limite Atteinte)", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "sma-revue-litterature"
+  },
+  "pinData": {},
+  "versionId": "1.0.0",
+  "triggerCount": 1,
+  "tags": [
+    { "name": "SMA", "createdAt": "2026-05-15" },
+    { "name": "AgenticAI", "createdAt": "2026-05-15" },
+    { "name": "4AISDR", "createdAt": "2026-05-15" }
+  ]
+}

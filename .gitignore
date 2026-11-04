@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.ipynb_checkpoints/
+*.pth
+*.pt
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
+chroma_db/
+Source/papers/*.pdf
+papers/*.pdf
